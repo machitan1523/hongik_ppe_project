@@ -5,9 +5,7 @@ import cv2
 import time
 import sys
 
-# ==========================================
-# 1. 설정
-# ==========================================
+
 HEF_FILE = "best_epoch200_1201_nms_350.1.hef"
 INPUT_FOLDER = "/home/hongik/Desktop/512_folder/archive/css-data/valid/images"
 OUTPUT_FOLDER = "results_detail_breakdown"
@@ -24,7 +22,7 @@ def is_inside(person_box, gear_box):
     return False
 
 def run_detail_latency_analysis():
-    # 0. 폴더 준비
+    
     if not os.path.exists(INPUT_FOLDER):
         print("입력 폴더 없음")
         return
@@ -38,13 +36,13 @@ def run_detail_latency_analysis():
     if total_files == 0: return
     print(f"-> 총 {total_files}장의 이미지로 [초정밀] 지연 시간 분석을 시작합니다...")
 
-    # 시간 누적 변수들 (세분화)
-    total_resize = 0.0      # A-1. 리사이징
-    total_norm = 0.0        # A-2. 정규화
-    total_infer = 0.0       # B. 추론 (전송 포함)
-    total_decode = 0.0      # C-1. 디코딩(파싱)
-    total_nms = 0.0         # C-2. 로직/NMS
-    total_vis = 0.0         # C-3. 시각화/저장
+    
+    total_resize = 0.0      
+    total_norm = 0.0       
+    total_infer = 0.0       
+    total_decode = 0.0      
+    total_nms = 0.0         
+    total_vis = 0.0         
 
     # 1. 모델 준비
     hef = HEF(HEF_FILE)
@@ -63,48 +61,36 @@ def run_detail_latency_analysis():
         with network_group.activate(network_group_params):
             with InferVStreams(network_group, input_vstreams_params, output_vstreams_params) as infer_pipeline:
                
-                # 워밍업
+                
                 infer_pipeline.infer(np.zeros((1, model_h, model_w, 3), dtype=np.float32))
                 processed_count = 0
 
-                # 2. 루프 시작
+                
                 for filename in image_files:
                     file_path = os.path.join(INPUT_FOLDER, filename)
                     image = cv2.imread(file_path)
                     if image is None: continue
                     h, w, _ = image.shape
                    
-                    # =================================================
-                    # [A] 전처리 세분화
-                    # =================================================
+                    
                     t0 = time.perf_counter()
                    
-                    # 1. 리사이징 (Resizing)
+                    
                     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                     resized_image = cv2.resize(image_rgb, (model_w, model_h))
                    
-                    t1 = time.perf_counter() # 리사이징 끝
+                    t1 = time.perf_counter() 
 
-                    # 2. 정규화 및 변환 (Normalization)
+                    
                     input_data = resized_image.astype(np.float32) / 255.0
                     input_data = np.expand_dims(input_data, axis=0)
                    
-                    t2 = time.perf_counter() # 정규화 끝
-                    # =================================================
-
-                    # =================================================
-                    # [B] 추론 (Inference + Transfer)
-                    # =================================================
-                    # 파이썬 API에서는 전송과 연산을 분리하기 어려우므로 합쳐서 측정
+                    t2 = time.perf_counter() 
+                    
                     output_data = infer_pipeline.infer(input_data)
                    
-                    t3 = time.perf_counter() # 추론 끝
-                    # =================================================
-                   
-                    # =================================================
-                    # [C] 후처리 세분화
-                    # =================================================
-                    # 1. 디코딩/파싱 (Decoding)
+                    t3 = time.perf_counter() 
+                    
                     raw_data_list = list(output_data.values())[0]
                     final_dets = []
                     try:
@@ -117,13 +103,13 @@ def run_detail_latency_analysis():
                                     final_dets.append({'box': bbox, 'score': score, 'class_id': class_idx})
                     except: pass
                    
-                    t4 = time.perf_counter() # 디코딩 끝
+                    t4 = time.perf_counter() 
 
-                    # 2. NMS 및 로직 (Logic) - 소유권 판단 등
+                    
                     persons = []
                     gears = []
                     for det in final_dets:
-                        # (생략: 데이터 분배 로직은 메모리 연산이라 매우 빠름)
+                        
                         box, score, class_id = det['box'], det['score'], det['class_id']
                         name = CLASSES.get(class_id, "Unknown")
                         py1, px1, py2, px2 = box
@@ -132,11 +118,11 @@ def run_detail_latency_analysis():
                         elif name in ['Hardhat', 'Safety Vest']:
                             gears.append({'name': name, 'box': [py1, px1, py2, px2], 'score': score})
                    
-                    t5 = time.perf_counter() # 로직 끝
+                    t5 = time.perf_counter() 
 
-                    # 3. 시각화 (Visualization) - 그리기 및 저장
+                    
                     for p in persons:
-                        # (그리기 코드 생략 - 동일함)
+                        
                         p_box = p['box']
                         py1, px1, py2, px2 = p_box
                         x1, y1 = int(px1 * w), int(py1 * h)
@@ -167,10 +153,9 @@ def run_detail_latency_analysis():
                     save_path = os.path.join(OUTPUT_FOLDER, f"res_{filename}")
                     cv2.imwrite(save_path, image)
 
-                    t6 = time.perf_counter() # 시각화 끝
-                    # =================================================
+                    t6 = time.perf_counter() 
 
-                    # 시간 누적
+                    
                     total_resize += (t1 - t0)
                     total_norm   += (t2 - t1)
                     total_infer  += (t3 - t2)
@@ -181,7 +166,7 @@ def run_detail_latency_analysis():
                     processed_count += 1
                     if processed_count % 50 == 0: print(f" -> {processed_count}장 완료...")
 
-                # 3. 평균 계산 및 출력
+                
                 def ms(val): return (val / processed_count) * 1000
 
                 print("\n" + "="*60)
