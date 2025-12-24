@@ -1,4 +1,3 @@
-inference/inference_350.py
 
 import cv2
 import time
