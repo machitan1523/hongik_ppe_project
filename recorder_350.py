@@ -6,25 +6,21 @@ import sys
 import csv
 from threading import Thread, Lock
 
-# ==========================================
-# 설정
-# ==========================================
+
 HEF_FILE = "best_epoch200_1201_nms_350.1.hef"
 WEBCAM_ID = 0
 CLASSES = { 0: 'Person', 1: 'Hardhat', 2: 'Safety Vest' }
 
-# 트래커 설정
+
 CONF_THRESHOLD = 0.55
 SMOOTH_FACTOR = 0.2
 MISS_TOLERANCE = 5
 
-# 저장 파일명
+
 VIDEO_FILENAME = "evidence_video.mp4"
 CSV_FILENAME = "performance_log.csv"
 
-# ==========================================
-# 카메라 & 트래커 클래스 (기존과 동일)
-# ==========================================
+
 class ThreadedCamera:
     def __init__(self, src=0):
         self.capture = cv2.VideoCapture(src)
@@ -114,11 +110,11 @@ def run_recorder():
     webcam = ThreadedCamera(WEBCAM_ID).start()
     time.sleep(1.0)
     
-    # 영상 저장 설정
+   
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out_video = cv2.VideoWriter(VIDEO_FILENAME, fourcc, 30.0, (640, 480))
     
-    # CSV 로그 파일 열기
+    
     csv_file = open(CSV_FILENAME, 'w', newline='')
     writer = csv.writer(csv_file)
     writer.writerow(["Timestamp", "FPS", "Person_Count", "Unsafe_Count"])
@@ -130,7 +126,7 @@ def run_recorder():
     hef = HEF(HEF_FILE)
     params = VDevice.create_params()
 
-    try: # [추가] 여기서부터 에러 감지 시작
+    try: 
         with VDevice(params) as target:
             configure_params = ConfigureParams.create_from_hef(hef, interface=HailoStreamInterface.PCIe)
             network_group = target.configure(hef, configure_params)[0]
@@ -151,12 +147,12 @@ def run_recorder():
                         frame = webcam.read()
                         if frame is None: continue
 
-                        # 추론
+                        
                         img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                         input_data = np.expand_dims(cv2.resize(img_rgb, (model_w, model_h)).astype(np.float32)/255.0, axis=0)
                         output_data = infer_pipeline.infer(input_data)
                         
-                        # 파싱 & 트래킹
+                        
                         raw_data = list(output_data.values())[0]
                         curr_dets = []
                         try:
@@ -168,7 +164,7 @@ def run_recorder():
                         
                         final_dets = update_trackers(curr_dets)
 
-                        # 그리기 & 통계
+                        
                         persons = []; gears = []
                         h, w, _ = frame.shape
                         for d in final_dets:
@@ -196,15 +192,15 @@ def run_recorder():
                             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                             cv2.putText(frame, f"Person ({status})", (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-                        # FPS 계산
+                        
                         curr_time = time.time()
                         fps = 1 / (curr_time - prev_time)
                         prev_time = curr_time
                         
-                        # 로그 저장
+                        
                         writer.writerow([f"{curr_time - start_record_time:.2f}", f"{fps:.2f}", len(persons), unsafe_count])
 
-                        # 화면 표시 & 저장
+                        
                         cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
                         cv2.imshow('Evidence Recorder', frame)
                         out_video.write(frame)
