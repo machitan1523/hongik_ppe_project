@@ -77,6 +77,15 @@ The following datasets were used for this project.
 | **Hailo-8 NPU (Proposed)** | **~25% (여유)** | **50°C (안정)** | [cite_start]**고성능 & 저발열 구현**  |
 
 ## 🚀 How to Run (실행 방법)
-1. 의존성 라이브러리 설치
-   ```bash
-   pip install -r requirements.txt
+# 1. 저장소 복제 및 이동
+git clone [YOUR_REPOSITORY_LINK]
+cd [REPOSITORY_NAME]
+
+# 2. 의존성 라이브러리 설치 (PyTorch, Ultralytics 등)
+pip install -r requirements.txt
+
+# PTQ(Post-Training Quantization) 적용 및 HEF 변환
+python convert_model.py --model yolov8s.pt --calib-imgs ./calibration_data/
+
+# 웹캠을 통한 실시간 PPE 탐지 실행
+python inference_hailo.py --model yolov8s_int8.hef --input 0
