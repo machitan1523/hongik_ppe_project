@@ -26,14 +26,28 @@ The following datasets were used for this project.
 * **Libraries**: PyTorch 2.9.0+cu126, Ultralytics YOLOv8.3.233, Hailo Dataflow Compiler v3.33.0
 
 ## 📊 Performance & Benchmark (실험 결과)
-`cpu_benchmark.py`와 `hailo_benchmark.py`를 통해 측정한 결과입니다.
+[cite_start]`cpu_benchmark.py`와 `hailo_benchmark.py`를 통해 측정한 성능 비교 결과입니다. [cite: 199, 269]
 
-| 디바이스 | 해상도 | 추론 속도 (FPS) | 전력 소모 (W) |
-| :---: | :---: | :---: | :---: |
-| Raspberry Pi (CPU) | 640x640 | 2.5 | 4.2 |
-| **RPi + Hailo** | **640x640** | **30.1** | **5.5** |
+### 1. 추론 속도 및 정확도 비교 (Inference Speed & Accuracy)
+[cite_start]기존 CPU 단독 실행 대비 **약 30배**의 속도 향상을 달성하면서도, 양자화(Quantization)로 인한 정확도 손실을 최소화했습니다. [cite: 12, 205]
 
-> Hailo 가속기를 사용했을 때 CPU 대비 약 12배 빠른 속도를 보였습니다.
+| 디바이스 (Device) | 모델 포맷 | 해상도 | 정확도 (mAP@0.5) | 추론 속도 (FPS) |
+| :---: | :---: | :---: | :---: | :---: |
+| Raspberry Pi 5 (CPU) | FP32 (.pt) | 640x640 | 0.9201 | 1.10 |
+| **RPi 5 + Hailo-8 NPU** | **INT8 (.hef)** | **640x640** | **0.8817** | **32.99** |
+
+> [cite_start]**Result:** Hailo-8 NPU 가속기를 적용했을 때, CPU 대비 **약 30배 (2,899%)** 빠른 추론 속도를 기록했습니다. 
+
+---
+
+### 2. 시스템 자원 효율성 (System Efficiency)
+[cite_start]NPU 오프로딩을 통해 CPU 자원을 절약하고 발열을 억제하여 엣지 디바이스의 안정성을 확보했습니다. 
+
+| 구성 (Configuration) | CPU 점유율 (Usage) | 기기 온도 (Temp) | 비고 |
+| :--- | :---: | :---: | :--- |
+| **PyTorch (CPU Only)** | ~40% (병목 발생) | 50°C | [cite_start]속도 매우 느림 (1.1 FPS)  |
+| **ONNX Runtime (CPU)** | 100% (자원 포화) | **75°C (과열)** | [cite_start]발열로 인한 스로틀링 위험 [cite: 243] |
+| **Hailo-8 NPU (Proposed)** | **~25% (여유)** | **50°C (안정)** | [cite_start]**고성능 & 저발열 구현**  |
 
 ## 🚀 How to Run (실행 방법)
 1. 의존성 라이브러리 설치
